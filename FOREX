@@ -1,0 +1,151 @@
+from forex_python.converter import CurrencyRates
+from datetime import datetime, timedelta
+from copy import deepcopy
+from matplotlib import pyplot as plt
+import re
+import numpy as np
+import datetime
+from datetime import date
+
+
+# Task Bonus task for the pilots (forex_python)
+'''
+[X]   Create class currency analyzer. 
+[X]   It should accept to the constructor list of currencies eg USD/RUB. PLN/USD etc.
+[X]   It should be able to print most actual information.
+[X]   Add possibility to output mean for last N months.
+[X]   Add possibility to visualize history chart.
+[X]   Format check
+We can use following module  forex_python
+'''
+
+
+months = int(input('>>> Enter the number of months:'))
+currencies_list = input('>>> Enter currencies of interest:').split()
+
+def format_check(request):
+    return all(re.fullmatch(r'[A-Z]{3}/[A-Z]{3}', i) for i in request)
+
+
+class CurrencyAnalyzer():
+    def __init__(self, currencies):
+        # add some check if we have currencies in the given format?
+        try:
+            if format_check(currencies) == True:
+                self.currencies = deepcopy(currencies)
+                self.currency_rates = CurrencyRates()
+        except:
+            raise 'WRONG FORMAT'
+
+
+    def show_actual_information(self):
+        try:
+            all_currencies_given = {}
+            for i in self.currencies:
+                currency_1, currency_2 = i.split('/')[0], i.split('/')[1]
+
+                if all_currencies_given.get(currency_1) is None:
+                    all_currencies_given[currency_1] = {}
+
+                all_currencies_given[currency_1][currency_2] = self.currency_rates.get_rate(currency_1, currency_2)
+
+            return all_currencies_given
+        except:
+            return 'WRONG FORMAT'
+
+    def order_combo_mean(self): # output a mean for last N months
+        try:
+            today = datetime.date.today()
+
+            for cur in self.currencies:
+
+                currency_1, currency_2 = cur.split('/')[0], cur.split('/')[1]
+                days_counter = 0
+                values_sum =  0
+
+                for week in range(4*months): # 4*months
+                    time_before = today - datetime.timedelta(days=(week)*7)
+
+                    try:
+                        rate = CurrencyRates().get_rates(currency_1, time_before)[currency_2]
+                        values_sum += rate
+                        days_counter += 1
+                        # print(f'{week}, week ago, {time_before}, {rate}')
+                        # we can show a weekly information this way
+                    except:
+                        pass
+
+                print(f'Mean of {cur}, for past {months}, months, {values_sum/(days_counter)}')
+        except:
+            return 'WRONG FORMAT'
+    def history_chart(self, cur1_cur2):
+        try:
+            today = date.today()  #777 datetime.date.today()
+
+            currency_1, currency_2 = cur1_cur2.split('/')[0], cur1_cur2.split('/')[1]
+
+            _date_rate = [[], []]
+            for week in range(months*4):
+                time_before = today - datetime.timedelta(days=(week)*7)
+                try:
+                    rate = CurrencyRates().get_rates(currency_1, time_before)[currency_2]
+
+                    _date_rate[0].append(str(time_before))
+                    _date_rate[1].append(rate)
+                except:
+                    pass
+
+            plt.figure(figsize=(12, 7))
+            plt.plot(_date_rate[0], _date_rate[1], 'o-r', alpha=0.7, label="USD/RUB", lw=5, mec='b', mew=2, ms=10)
+
+            plt.legend()
+            plt.grid(True)
+
+            plt.show()
+        except:
+            return 'WRONG FORMAT'
+
+    def dynamics(self):
+        dynamics = []
+        today = datetime.date.today()
+
+        for cur in self.currencies:
+            currency1, currency2 = cur.split('/')[0], cur.split('/')[1]
+            current_month, dev1 = 0, 0
+            previous_month, dev2 = 0, 0
+
+            for week in range(4):
+                time_before = today - datetime.timedelta(days=(week)*7)
+                try:
+                    rate = CurrencyRates().get_rates(currency1, time_before)[currency2]
+                    current_month += rate
+                    dev1 += 1
+                except:
+                    pass
+
+            for week in range(4):
+                month_ago = today - datetime.timedelta(days=31)
+                time_before = month_ago - datetime.timedelta(days=(week)*7)
+                try:
+                    rate = CurrencyRates().get_rates(currency1, time_before)[currency2]
+                    current_month += rate
+                    dev1 += 1
+                    print(rate, dev1)
+                except:
+                    pass
+
+            try:
+                av_cur_mo = current_month / dev1
+                av_prev_mo = previous_month / dev2
+
+                dynamic = av_cur_mo / av_prev_mo * 100
+                dynamics.append((dynamic, cur))
+
+
+            except:
+                print(f'{cur} rates are not implemented')
+
+
+
+print(CurrencyAnalyzer(currencies_list).show_actual_information())
+
